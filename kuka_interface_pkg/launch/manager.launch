@@ -1,0 +1,4 @@
+<launch>
+    <node name="arms_manager" pkg="kuka_interface_pkg" type="arms_manager_node"/>  
+    <node name="ee_manager" pkg="kuka_interface_pkg" type="ee_manager_node"/>  
+</launch>
