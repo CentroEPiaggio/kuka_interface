@@ -24,8 +24,9 @@ In the *matlab_to_ros* folder you can find some simulink schemes. Using these yo
 
 Setup:
 ---
-In the command Window of matlab:
+Use  *matlab_to_ros* as current folder, then in the command Window of matlab:
 - rosinit('http://**ROS_MASTER_IP**:11311'), substitute **ROS_MASTER_IP** with the IP of the pc hosting the roscore
+- init
 
 Open one of the simulink schemes and use them to send commands to ROS.
 
