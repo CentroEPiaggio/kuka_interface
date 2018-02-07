@@ -16,6 +16,8 @@ In a terminal:
 - cd ~/catkin_ws
 - catkin_make
 
+In Matlab, add the directory *kuka_interface/matlab_to_ros/RealTime_Pacer/RealTime_Pacer* using the AddPath utility.
+
 Matlab
 ===
 In the *matlab_to_ros* folder you can find some simulink schemes. Using these you can send commands to the nodes stored in the *kuka_interface_pkg*.
