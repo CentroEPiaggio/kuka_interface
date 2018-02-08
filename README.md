@@ -37,9 +37,14 @@ C++/ROS
 ===
 Using one of the nodes in the *kuka_interface_pkg* you can send command directly to a robot using the kuka_lwr software in position control.
 
-to start the interface type in a terminal (after the robot is started):
-- roscore
-- roslaunch kuka_interface manager.launch
+To start the interface for single-lwr-example type in a terminal (after the robot is started):
+- rosrun kuka_interface_pkg single_lwr_manager_node
 
 now commands can be sent using matlab, or, as an example:
-- rosrun kuka_interface homing
+- rosrun kuka_interface_pkg single_lwr_homing
+
+To start the interface for the two-arms configuration type in a terminal (after the robot is started):
+- roslaunch kuka_interface_pkg manager.launch
+
+now commands can be sent using matlab, or, as an example:
+- rosrun kuka_interface_pkg homing
