@@ -1,27 +1,32 @@
+// BSD 3-Clause License
 
-// Copyright (c) 2012, qbrobotics.
+// Copyright (c) 2017, qbrobotics
 // All rights reserved.
-//
+
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
-//
-// - Redistributions of source code must retain the above copyright notice, this
-// list of conditions and the following disclaimer.
-// - Redistributions in binary form must reproduce the above copyright notice,
-// this list of conditions and the following disclaimer in the documentation
-// and/or other materials provided with the distribution.
-//
+
+// * Redistributions of source code must retain the above copyright notice, this
+//   list of conditions and the following disclaimer.
+
+// * Redistributions in binary form must reproduce the above copyright notice,
+//   this list of conditions and the following disclaimer in the documentation
+//   and/or other materials provided with the distribution.
+
+// * Neither the name of the copyright holder nor the names of its
+//   contributors may be used to endorse or promote products derived from
+//   this software without specific prior written permission.
+
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-// POSSIBILITY OF SUCH DAMAGE.
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /**
  *  \file       qbmove_communications.cpp
@@ -153,17 +158,19 @@ int RS485listPorts( char list_of_ports[10][255] )
     HANDLE port;
     int i, h;
     char aux_string[255];
+	char aux_port_str[255];
 
     h = 0;
 
-    for(i = 1; i < 10; ++i) {
+    for(i = 1; i < 20; ++i) {
         strcpy(list_of_ports[i], "");
-        sprintf(aux_string, "COM%d", i);
+        sprintf(aux_string, "\\\\.\\COM%d", i);
         port = CreateFile(aux_string, GENERIC_WRITE|GENERIC_READ,
                 0, NULL, OPEN_EXISTING, 0, NULL);
 
         if( port != INVALID_HANDLE_VALUE) {
-            strcpy(list_of_ports[h], aux_string);
+			sscanf(aux_string, "\\\\.\\%s", aux_port_str);
+            strcpy(list_of_ports[h], aux_port_str);
             CloseHandle( port );
             h++;
         }
@@ -210,11 +217,14 @@ void openRS485(comm_settings *comm_settings_t, const char *port_s, int BAUD_RATE
 
     DCB  dcb;                   // for serial port configuration
     COMMTIMEOUTS cts;           // for serial port configuration
-
+	char my_port[255];
+	
 //======================================================     opening serial port
+	
+	sprintf(my_port, "\\\\.\\%s", port_s);
 
     comm_settings_t->file_handle =
-        CreateFile( port_s,
+        CreateFile( my_port,
                     GENERIC_WRITE|GENERIC_READ,
                     0, NULL, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT, NULL);
 
@@ -307,32 +317,23 @@ error:
     // set baud rate
     if (BAUD_RATE > 460800){
 
-      // cfmakeraw(&options);
+        // enable the receiver and set local mode
+        options.c_cflag |= (CLOCAL | CREAD);
 
-      cfsetispeed(&options, 300);
-      cfsetospeed(&options, 300);
+        // enable flags
+        options.c_cflag &= ~PARENB;
+        //options.c_cflag &= ~CSTOPB;
+        options.c_cflag &= ~CSIZE;
+        options.c_cflag |= CS8;
 
-      // enable the receiver and set local mode
-      options.c_cflag |= (CLOCAL | CREAD);
+        //disable flags
+        options.c_cflag &= ~CRTSCTS;
+        options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+        options.c_oflag &= ~OPOST;
+        options.c_iflag &= ~(IXON | IXOFF | IXANY | INLCR);
 
-      // enable flags
-      options.c_cflag &= ~PARENB;
-      //options.c_cflag &= ~CSTOPB;
-      options.c_cflag &= ~CSIZE;
-      options.c_cflag |= CS8;
-
-      //disable flags
-      options.c_cflag &= ~CRTSCTS;
-      options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
-      options.c_oflag &= ~OPOST;
-      options.c_iflag &= ~(IXON | IXOFF | IXANY | INLCR);
-
-      options.c_cc[VMIN] = 0;
-      options.c_cc[VTIME] = 0;
-      // Set not-standard BAUDRATE bypassing termios.h
-
-      if (ioctl(comm_settings_t->file_handle, IOSSIOSPEED, &custom_baudrate))
-          goto error;
+        options.c_cc[VMIN] = 0;
+        options.c_cc[VTIME] = 0;
 
     }
     else{
@@ -376,6 +377,7 @@ error:
     ioctl(comm_settings_t->file_handle, TIOCGSERIAL, &serinfo);
     serinfo.flags |= ASYNC_LOW_LATENCY;
     ioctl(comm_settings_t->file_handle, TIOCSSERIAL, &serinfo);
+    
 #endif
 
     // save changes
@@ -383,6 +385,14 @@ error:
         goto error;
     }
 
+#if (defined __APPLE__)
+    //Set non custom baudrate for APPLE systems
+    if(ioctl(comm_settings_t->file_handle, IOSSIOSPEED, &custom_baudrate, 1)){
+        printf("ERROR\n");
+        goto error;
+    }
+#endif
+    
     return;
 
 error:
@@ -404,7 +414,7 @@ error:
 void closeRS485(comm_settings *comm_settings_t)
 {
 #if (defined(_WIN32) || defined(_WIN64))
-    CloseHandle( comm_settings_t->file_handle );
+    CloseHandle(comm_settings_t->file_handle);
 #else
     close(comm_settings_t->file_handle);
 #endif
@@ -590,8 +600,8 @@ int RS485ListDevices(comm_settings *comm_settings_t, char list_of_ids[255])
         }
 
         if(aux_int) {
-         list_of_ids[h] = package_in[2];
-         h++;
+            list_of_ids[h] = package_in[2];
+            h++;
         }
 
 #else
@@ -1111,60 +1121,6 @@ int commGetMeasurements(comm_settings *comm_settings_t, int id, short int measur
     }
 
     return ((package_in_size - 2) >> 1);
-}
-
-
-//==============================================================================
-//                                                        commGetMeasurementsIR
-//==============================================================================
-//==============================================================================
-int commGetMeasurementsIR(comm_settings *comm_settings_t, int id, short int measurementsIR[]) {
-
-    char data_out[BUFFER_SIZE];         // output data buffer
-    char package_in[BUFFER_SIZE];       // output data buffer
-    int package_in_size;
-
-#if (defined(_WIN32) || defined(_WIN64))
-    DWORD package_size_out;             // for serial port access
-#else
-    int n_bytes;
-#endif
-
-//=================================================     preparing packet to send
-
-    data_out[0] = ':';
-    data_out[1] = ':';
-    data_out[2] = (unsigned char) id;
-    data_out[3] = 2;
-    data_out[4] = CMD_GET_IR;             // command
-    data_out[5] = CMD_GET_IR;             // checksum
-
-#if (defined(_WIN32) || defined(_WIN64))
-    WriteFile(comm_settings_t->file_handle, data_out, 6, &package_size_out, NULL);
-#else
-    ioctl(comm_settings_t->file_handle, FIONREAD, &n_bytes);
-    if(n_bytes)
-        read(comm_settings_t->file_handle, package_in, n_bytes);
-
-    write(comm_settings_t->file_handle, data_out, 6);
-#endif
-
-    package_in_size = RS485read(comm_settings_t, id, package_in);
-    if (package_in_size == -1)
-        return -1;
-
-//==============================================================     get packet
-
-    ((char *) &measurementsIR[0])[0] = package_in[2];
-    ((char *) &measurementsIR[0])[1] = package_in[1];
-
-    ((char *) &measurementsIR[1])[0] = package_in[4];
-    ((char *) &measurementsIR[1])[1] = package_in[3];
-
-    ((char *) &measurementsIR[2])[0] = package_in[6];
-    ((char *) &measurementsIR[2])[1] = package_in[5];
-
-    return 0;
 }
 
 //==============================================================================
