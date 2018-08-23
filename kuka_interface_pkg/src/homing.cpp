@@ -10,6 +10,7 @@ bool active_right = false;
 
 std::vector<double> q0_l, q0_r;
 ros::Publisher pub_h, pub_v;
+std::vector<double> stretch_l, stretch_r;
 
 void reset_ee()
 {
@@ -65,27 +66,58 @@ int main(int argc, char **argv)
 	std::cout<<"2: both"<<std::endl;
 	std::cout<<"3: ee reset"<<std::endl;
 	std::cout<<"4: kuka dance"<<std::endl;
+	std::cout<<"5: kuka stretching"<<std::endl;
 
 	int arm=-1;
 	std::cin>>arm;
 
 	std::vector<double> homing_left, homing_right;
 
-	homing_left.push_back(-0.1); //a1	
-	homing_left.push_back(-1.3);  //a2
-	homing_left.push_back(0.1);   //e1
-	homing_left.push_back(-2.05); //a3
-    homing_left.push_back(-0.05); //a4
-	homing_left.push_back(0.25);  //a5
-	homing_left.push_back(-0.35); //a6
+	homing_left.push_back(0.4352); //a1	
+	homing_left.push_back(-1.028);  //a2
+	homing_left.push_back(0.1226);   //e1
+	homing_left.push_back(-1.699); //a3
+    homing_left.push_back(-0.5845); //a4
+	homing_left.push_back(1.0376);  //a5
+	homing_left.push_back(-1.1276); //a6
 
-	homing_right.push_back(0.1); //a1
-	homing_right.push_back(-1.47);  //a2
-	homing_right.push_back(-0.1);   //e1
-	homing_right.push_back(-0.785); //a3
-    homing_right.push_back(0.1); //a4
-	homing_right.push_back(0.785);  //a5
-	homing_right.push_back(-0.1); //a6
+	//Exp 1,2,3
+
+ 	homing_right.push_back(0.0); //a1                  
+ 	homing_right.push_back(-1.9509);  //a2
+ 	homing_right.push_back(0.0);   //e1
+ 	homing_right.push_back(-1.8703); //a3
+	homing_right.push_back(0.0); //a4
+ 	homing_right.push_back(-0.6711);  //a5
+ 	homing_right.push_back(0.0); //a6
+
+	//Exp 4
+
+	//homing_right.push_back(0.0069); //a1
+	//homing_right.push_back(-2.0805);  //a2
+	//homing_right.push_back(-0.00389);   //e1
+	//homing_right.push_back(-1.9538); //a3
+    //homing_right.push_back(-0.003); //a4
+	//homing_right.push_back(0.9156);  //a5
+	//homing_right.push_back(-0.0039); //a6
+
+	stretch_l.push_back(0.0); //a1	
+	stretch_l.push_back(0.0);  //a2
+	stretch_l.push_back(0.0);   //e1
+	stretch_l.push_back(-1.57); //a3
+    stretch_l.push_back(0.0); //a4
+	stretch_l.push_back(0.0);  //a5
+	stretch_l.push_back(0.0); //a6
+
+	//Exp 1,2,3
+
+ 	stretch_r.push_back(0.0); //a1                  
+ 	stretch_r.push_back(-0.78);  //a2
+ 	stretch_r.push_back(0.0);   //e1
+ 	stretch_r.push_back(0.0); //a3
+	stretch_r.push_back(0.0); //a4
+ 	stretch_r.push_back(0.0);  //a5
+ 	stretch_r.push_back(0.0); //a6
 
 	bool using_left = false;
 	bool using_right = false;
@@ -124,6 +156,13 @@ int main(int argc, char **argv)
 		using_left = true;
 		using_right = true;
 	}
+	else if(arm==5)
+	{
+	 	std::cout<<"Homing: stretching"<<std::endl;
+
+		using_left = true;
+		using_right = true;
+	}
 	else	
 	{
 		std::cout<<"WRONG!"<<std::endl;
@@ -150,7 +189,8 @@ int main(int argc, char **argv)
 			if(using_right) active = active_right;
 			else active=false;
 
-		r.sleep();
+		//r.sleep();
+		usleep(10000);
 		ros::spinOnce();
 	}
 
@@ -183,7 +223,8 @@ int main(int argc, char **argv)
 			pub_command_r.publish(msg_right);
 		}
 
-		r.sleep();
+		//r.sleep();
+		usleep(10000);
 		ros::spinOnce();
 
 		alpha+=0.0025;
@@ -241,7 +282,48 @@ int main(int argc, char **argv)
 				}
 			}
 
-			r.sleep();
+			//r.sleep();
+			usleep(10000);
+			ros::spinOnce();
+		}
+	}
+
+	alpha = 0.0;
+
+	if(arm==5)
+	{
+		while(ros::ok())
+		{
+			if(using_left)
+			{
+				msg_left.position.x = alpha*stretch_l.at(0) + (1-alpha)*homing_left.at(0);
+				msg_left.position.y = alpha*stretch_l.at(1) + (1-alpha)*homing_left.at(1);
+				msg_left.position.z = alpha*stretch_l.at(2) + (1-alpha)*homing_left.at(2);
+				msg_left.orientation.x = alpha*stretch_l.at(3) + (1-alpha)*homing_left.at(3);
+				msg_left.orientation.y = alpha*stretch_l.at(4) + (1-alpha)*homing_left.at(4);
+				msg_left.orientation.z = alpha*stretch_l.at(5) + (1-alpha)*homing_left.at(5);
+				msg_left.orientation.w = alpha*stretch_l.at(6) + (1-alpha)*homing_left.at(6);
+
+				pub_command_l.publish(msg_left);
+			}
+			if(using_right)
+			{
+				msg_right.position.x = alpha*stretch_r.at(0) + (1-alpha)*homing_right.at(0);
+				msg_right.position.y = alpha*stretch_r.at(1) + (1-alpha)*homing_right.at(1);
+				msg_right.position.z = alpha*stretch_r.at(2) + (1-alpha)*homing_right.at(2);
+				msg_right.orientation.x = alpha*stretch_r.at(3) + (1-alpha)*homing_right.at(3);
+				msg_right.orientation.y = alpha*stretch_r.at(4) + (1-alpha)*homing_right.at(4);
+				msg_right.orientation.z = alpha*stretch_r.at(5) + (1-alpha)*homing_right.at(5);
+				msg_right.orientation.w = alpha*stretch_r.at(6) + (1-alpha)*homing_right.at(6);
+
+				pub_command_r.publish(msg_right);
+			}
+
+			alpha+=0.0025;
+			if(alpha>1) break;
+
+			//r.sleep();
+			usleep(10000);
 			ros::spinOnce();
 		}
 	}
