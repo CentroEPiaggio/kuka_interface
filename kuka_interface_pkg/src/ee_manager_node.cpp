@@ -7,15 +7,15 @@ int main(int argc, char **argv)
     device_list dl;
     
     device_params soft_hand_params;
-    soft_hand_params.ID = 5;
+    soft_hand_params.ID = 2;
     soft_hand_params.min = 0;
-    soft_hand_params.max = 18000;
+    soft_hand_params.max = 14000;
     soft_hand_params.topic = "/hand_cmd";
     
     dl["soft_hand"] = soft_hand_params;
     
     device_params velvet_params;
-    velvet_params.ID = 30;
+    velvet_params.ID = 1;
     velvet_params.min = -32000;
     velvet_params.max = 32000;
     velvet_params.topic = "/velvet_cmd";
