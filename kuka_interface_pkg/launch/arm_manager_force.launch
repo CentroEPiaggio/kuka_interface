@@ -1,0 +1,9 @@
+<launch>
+    <node name="arms_manager" pkg="kuka_interface_pkg" type="arms_manager_node" output="screen"> 
+    	<param name="use_force_sensor_right" value="true" />
+    	<param name="calibration_number" value="100" />
+    	<param name="world_frame" value="vito_anchor" />
+    	<param name="ee_mass_right" value="0.65" />
+    	<param name="ee_mass_left" value="0.0" /> <!-- FIXME -->
+    </node>
+</launch>

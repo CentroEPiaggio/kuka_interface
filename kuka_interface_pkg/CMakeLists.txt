@@ -7,6 +7,17 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  tf
+  dynamic_reconfigure
+)
+
+################################################
+## Declare ROS dynamic reconfigure parameters ##
+################################################
+
+## Generate dynamic reconfigure parameters in the 'cfg' folder
+generate_dynamic_reconfigure_options(
+    cfg/config_tool.cfg
 )
 
 catkin_package()
@@ -17,7 +28,7 @@ include_directories(
 )
 
 add_executable(arms_manager_node src/arms_manager_node.cpp src/arms_manager.cpp)
-add_dependencies(arms_manager_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(arms_manager_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
 target_link_libraries(arms_manager_node ${catkin_LIBRARIES})
 
 add_executable(ee_manager_node src/ee_manager_node.cpp src/ee_manager.cpp src/qbmove_communications.cpp)
@@ -35,3 +46,7 @@ target_link_libraries(homing ${catkin_LIBRARIES})
 add_executable(single_lwr_homing src/single_lwr_homing.cpp)
 add_dependencies(single_lwr_homing ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(single_lwr_homing ${catkin_LIBRARIES})
+
+add_executable(fake_force_sensor_publisher_node src/fake_force_sensor_publisher_node.cpp)
+add_dependencies(fake_force_sensor_publisher_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(fake_force_sensor_publisher_node ${catkin_LIBRARIES})

@@ -5,6 +5,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "arms_manager_node");
 
     ArmsManager AM;
+    AM.init();
     AM.run();
 
     return 0;
