@@ -1,5 +1,7 @@
 <launch>
     <node name="arms_manager" pkg="kuka_interface_pkg" type="arms_manager_node" output="screen"> 
+	<param name="use_right_arm" value="true" />
+	<param name="use_left_arm" value="true" />
     	<param name="use_force_sensor_right" value="true" />
     	<param name="calibration_number" value="100" />
     	<param name="world_frame" value="vito_anchor" />

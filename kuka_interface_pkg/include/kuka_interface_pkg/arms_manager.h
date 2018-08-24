@@ -40,6 +40,8 @@ private:
 
     bool active_left = false;
     bool active_right = false;
+    bool use_left_arm_ = false;
+    bool use_right_arm_ = false;
     bool use_force_sensor_right_ = false;
     bool use_force_sensor_left_ = false;
     std::string world_frame;

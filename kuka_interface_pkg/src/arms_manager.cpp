@@ -2,6 +2,8 @@
 
 ArmsManager::ArmsManager(): private_nh_("~")
 {
+    private_nh_.param("use_right_arm", use_right_arm_, true);
+    private_nh_.param("use_left_arm", use_left_arm_, true);
     private_nh_.param("ee_mass_right", ee_mass_right, 0.0); //FIXME to be estimated
     private_nh_.param("ee_mass_left", ee_mass_left, 0.0); //FIXME to be estimated
     private_nh_.param("use_force_sensor_right", use_force_sensor_right_, false);
@@ -79,13 +81,6 @@ ArmsManager::ArmsManager(): private_nh_("~")
     force_flag_right.store(false);
     force_flag_left.store(false);
 
-    //Start a separate thread for reading sensors for controlling the arms with a fixed frequency
-    if (use_force_sensor_left_||use_force_sensor_right_)
-    {
-	    sensor_thread_stopped.store(false);
-	    sensor_thread = new boost::thread(&ArmsManager::sensor_thread_callback, this);
-    }
-
     //Dynamic reconfiguration for force thresholds
     configFun = boost::bind(&ArmsManager::config_callback, this, _1, _2);
     server.setCallback(configFun);
@@ -121,7 +116,7 @@ void ArmsManager::sensor_thread_callback()
     ros::Rate f(100);
     while(ros::ok() && !sensor_thread_stopped.load())
     {
-    	ros::spinOnce();
+      ros::spinOnce();
       f.sleep();
     }
 }
@@ -129,6 +124,37 @@ void ArmsManager::sensor_thread_callback()
 void ArmsManager::init()
 {
     ROS_INFO_STREAM("Initialization.");
+    
+    ros::Rate f(10);
+    
+    if (use_left_arm_)
+    {
+      while(!active_left)
+      {
+	ROS_INFO("Waiting for left arm ... ");
+      	ros::spinOnce();
+	f.sleep();
+      }
+    }
+    
+    if (use_right_arm_)
+    {
+      while(!active_right)
+      {
+	ROS_INFO("Waiting for right arm ... ");
+      	ros::spinOnce();
+	f.sleep();
+      }
+    }
+
+    ROS_INFO_STREAM("Robots are active.");
+    
+    //Start a separate thread for reading sensors for controlling the arms with a fixed frequency
+    if (use_force_sensor_left_||use_force_sensor_right_)
+    {
+	sensor_thread_stopped.store(false);
+	sensor_thread = new boost::thread(&ArmsManager::sensor_thread_callback, this);
+    }
 
     float expected_force_period = 1.0;
     float timeout = (float)calibration_number*expected_force_period;
@@ -141,9 +167,8 @@ void ArmsManager::init()
 	while(calibration_counter_right_ < calibration_number)
 	{
 	  while (calibration_counter_right_ <= calibration_number && (ros::Time::now()-start_time).toSec() < timeout)
-	  {
-	      ros::Rate(10).sleep();
-	  }
+	      f.sleep();
+	  
 	  if (calibration_counter_right_ < calibration_number)
 	  {
 	      ROS_ERROR_STREAM("Error in calibrating the right sensor. Please, check the connection.");
@@ -160,9 +185,8 @@ void ArmsManager::init()
 	while (calibration_counter_left_ < calibration_number)
 	{
 	  while (calibration_counter_left_ <= calibration_number && (ros::Time::now()-start_time).toSec() < timeout)
-	  {
-	      ros::Rate(10).sleep();
-	  }
+	      f.sleep();
+	  
 	  if (calibration_counter_left_ < calibration_number)
 	  {
 	    ROS_ERROR_STREAM("Error in calibrating the left sensor. Please, check the connection.");
@@ -188,22 +212,22 @@ void ArmsManager::callback_right(const geometry_msgs::Pose& msg)
 
 void ArmsManager::callback_left_aux(const trajectory_msgs::JointTrajectory& msg)
 {
-	if(!force_flag_left.load())
-	{
-	  traj_left_mutex.lock();
-	  traj_left = msg;
-	  traj_left_mutex.unlock();
-	}
+    if(!force_flag_left.load())
+    {
+      traj_left_mutex.lock();
+      traj_left = msg;
+      traj_left_mutex.unlock();
+    }
 }
 
 void ArmsManager::callback_right_aux(const trajectory_msgs::JointTrajectory& msg)
 {
-	if(!force_flag_right.load())
-	{
-	  traj_right_mutex.lock();
-	  traj_right = msg;
-	  traj_right_mutex.unlock();
-	}
+    if(!force_flag_right.load())
+    {
+      traj_right_mutex.lock();
+      traj_right = msg;
+      traj_right_mutex.unlock();
+    }
 }
 
 void ArmsManager::state_callback_left(const sensor_msgs::JointState& msg)
@@ -363,49 +387,37 @@ void ArmsManager::emergency_callback(const std_msgs::Bool& msg){
 void ArmsManager::run()
 {
   ros::Rate f(100);
-  bool active=false;
 
-    while(!active && ros::ok())
-    {
-        active = active_left && active_right;
-        if (!use_force_sensor_right_ && !use_force_sensor_left_)
-			ros::spinOnce();
-		f.sleep();
-		ROS_INFO("Waiting for arms ... ");
-    }
+  while(ros::ok())
+  {
+      //publish commands to arms
+      traj_left_mutex.lock();
+      pub_command_left.publish(traj_left);
+      traj_left_mutex.unlock();
 
-    ROS_INFO_STREAM("Robots are active.");
+      traj_right_mutex.lock();
+      pub_command_right.publish(traj_right);
+      traj_right_mutex.unlock();
 
-    while(ros::ok())
-    {
-	//publish commands to arms
-	traj_left_mutex.lock();
-	pub_command_left.publish(traj_left);
-	traj_left_mutex.unlock();
+      //publish force flags
+      if (use_force_sensor_right_)
+      {
+	std_msgs::Bool msg_right;
+	msg_right.data = force_flag_right.load();
+	pub_flag_force_right.publish(msg_right);
+      }
 
-	traj_right_mutex.lock();
-	pub_command_right.publish(traj_right);
-	traj_right_mutex.unlock();
+      if (use_force_sensor_left_)
+      {
+	std_msgs::Bool msg_left;
+	msg_left.data = force_flag_left.load();
+	pub_flag_force_left.publish(msg_left);
+      }
 
-	//publish force flags
-	if (use_force_sensor_right_)
-	{
-	  std_msgs::Bool msg_right;
-	  msg_right.data = force_flag_right.load();
-	  pub_flag_force_right.publish(msg_right);
-	}
+      if (!use_force_sensor_right_ && !use_force_sensor_left_)
+	      ros::spinOnce();
 
-	if (use_force_sensor_left_)
-	{
-	  std_msgs::Bool msg_left;
-	  msg_left.data = force_flag_left.load();
-	  pub_flag_force_left.publish(msg_left);
-	}
-
-	if (!use_force_sensor_right_ && !use_force_sensor_left_)
-		ros::spinOnce();
-
-	f.sleep();
-    }
+      f.sleep();
+  }
 
 }
