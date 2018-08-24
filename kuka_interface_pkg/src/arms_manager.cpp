@@ -45,8 +45,8 @@ ArmsManager::ArmsManager(): private_nh_("~")
 
     sub_right = nh.subscribe("/kuka_command_right",1,&ArmsManager::callback_right,this);
     sub_left = nh.subscribe("/kuka_command_left",1,&ArmsManager::callback_left,this);
-    sub_right_aux = nh.subscribe("/right_arm/joint_trajectory_controller/command_aux",1,&ArmsManager::callback_right_aux,this);
-    sub_left_aux = nh.subscribe("/left_arm/joint_trajectory_controller/command_aux",1,&ArmsManager::callback_left_aux,this);
+    sub_right_aux = nh.subscribe("/right_arm/command_aux",1,&ArmsManager::callback_right_aux,this);
+    sub_left_aux = nh.subscribe("/left_arm/command_aux",1,&ArmsManager::callback_left_aux,this);
     pub_command_right = nh.advertise<trajectory_msgs::JointTrajectory>("/right_arm/joint_trajectory_controller/command", 10);
     pub_command_left = nh.advertise<trajectory_msgs::JointTrajectory>("/left_arm/joint_trajectory_controller/command", 10);
     sub_left_state = nh.subscribe("/left_arm/joint_states",1,&ArmsManager::state_callback_left,this);
