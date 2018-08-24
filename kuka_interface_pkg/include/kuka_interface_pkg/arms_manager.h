@@ -10,6 +10,8 @@
 #include <dynamic_reconfigure/server.h>
 #include <kuka_interface_pkg/config_toolConfig.h>
 #include "message_filters/subscriber.h"
+#include <shared_msgs/CommandTrajectory.h>
+#include <shared_msgs/FeedbackTrajectory.h>
 #include <mutex>
 #include <atomic>
 
@@ -25,7 +27,9 @@ private:
     void callback_left(const geometry_msgs::Pose& msg);
     void callback_right(const geometry_msgs::Pose& msg);
     void callback_left_aux(const trajectory_msgs::JointTrajectory& msg);
-    void callback_right_aux(const trajectory_msgs::JointTrajectory& msg);
+    void callback_right_aux(const trajectory_msgs::JointTrajectory& msg); 
+    void callback_command_force_left_aux(const shared_msgs::CommandTrajectory& msg);
+    void callback_command_force_right_aux(const shared_msgs::CommandTrajectory& msg);
     void state_callback_left(const sensor_msgs::JointState& msg);
     void state_callback_right(const sensor_msgs::JointState& msg);
     void emergency_callback(const std_msgs::Bool& msg);
@@ -53,8 +57,8 @@ private:
     int calibration_counter_left_ = 0;
     double ee_mass_right, ee_mass_left;
 
-    std::atomic<bool> force_flag_right;
-    std::atomic<bool> force_flag_left;
+    std::atomic<int> force_flag_right;
+    std::atomic<int> force_flag_left;
     void store_reference(const geometry_msgs::Pose& in, trajectory_msgs::JointTrajectory& out);
     bool gravityCompensation(float mass, geometry_msgs::WrenchStamped msg, tf::Vector3& f);
 
@@ -65,6 +69,7 @@ private:
     ros::Publisher pub_flag_force_right, pub_flag_force_left;
     ros::Subscriber sub_left, sub_right;
     ros::Subscriber sub_left_aux, sub_right_aux;
+    ros::Subscriber sub_command_force_left_aux, sub_command_force_right_aux;
     ros::Subscriber sub_left_state;
     ros::Subscriber sub_right_state;
     ros::Subscriber sub_emergency_right;
@@ -80,6 +85,10 @@ private:
     boost::thread* sensor_thread;
     std::atomic_bool sensor_thread_stopped;
 
-    std::atomic<double> force_ths[6];
+    std::atomic<double> force_ths[6];		//can be not atomic
+    std::atomic<int> sensitivity_axis_right[6]; //can be not atomic
+    std::atomic<int> sensitivity_axis_left[6];	//can be not atomic
+    std::atomic_bool right_arm_stopped;
+    std::atomic_bool left_arm_stopped;
 
 };

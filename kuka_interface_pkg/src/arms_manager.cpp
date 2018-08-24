@@ -49,6 +49,9 @@ ArmsManager::ArmsManager(): private_nh_("~")
     sub_left = nh.subscribe("/kuka_command_left",1,&ArmsManager::callback_left,this);
     sub_right_aux = nh.subscribe("/right_arm/command_aux",1,&ArmsManager::callback_right_aux,this);
     sub_left_aux = nh.subscribe("/left_arm/command_aux",1,&ArmsManager::callback_left_aux,this);
+    sub_command_force_right_aux = nh.subscribe("/right_arm/command_force_aux",1,&ArmsManager::callback_command_force_right_aux,this);
+    sub_command_force_left_aux = nh.subscribe("/left_arm/command_force_aux",1,&ArmsManager::callback_command_force_left_aux,this);
+    sub_left_aux = nh.subscribe("/left_arm/command_aux",1,&ArmsManager::callback_left_aux,this);
     pub_command_right = nh.advertise<trajectory_msgs::JointTrajectory>("/right_arm/joint_trajectory_controller/command", 10);
     pub_command_left = nh.advertise<trajectory_msgs::JointTrajectory>("/left_arm/joint_trajectory_controller/command", 10);
     sub_left_state = nh.subscribe("/left_arm/joint_states",1,&ArmsManager::state_callback_left,this);
@@ -78,16 +81,26 @@ ArmsManager::ArmsManager(): private_nh_("~")
 
     bias_force_right_[0] = bias_force_right_[1] = bias_force_right_[2] = 0;
     bias_force_left_[0] = bias_force_left_[1] = bias_force_left_[2] = 0;
-    force_flag_right.store(false);
-    force_flag_left.store(false);
+    force_flag_right.store(shared_msgs::FeedbackTrajectory::NOT_SENSED);
+    force_flag_left.store(shared_msgs::FeedbackTrajectory::NOT_SENSED);
 
     //Dynamic reconfiguration for force thresholds
     configFun = boost::bind(&ArmsManager::config_callback, this, _1, _2);
     server.setCallback(configFun);
+    
+    //Initialize force flags and ths
     for (int i = 0; i < 6; ++i)
+    {
       force_ths[i].store(1.0);
-
+      sensitivity_axis_right[i].store(shared_msgs::CommandTrajectory::SENSED_ERROR);
+      sensitivity_axis_left[i].store(shared_msgs::CommandTrajectory::SENSED_ERROR);
+    }
+    
+    //Initialize stopped arm to false
+    right_arm_stopped.store(false);
+    left_arm_stopped.store(false);
 }
+
 
 ArmsManager::~ArmsManager()
 {
@@ -212,7 +225,7 @@ void ArmsManager::callback_right(const geometry_msgs::Pose& msg)
 
 void ArmsManager::callback_left_aux(const trajectory_msgs::JointTrajectory& msg)
 {
-    if(!force_flag_left.load())
+    if(!left_arm_stopped.load())
     {
       traj_left_mutex.lock();
       traj_left = msg;
@@ -222,7 +235,7 @@ void ArmsManager::callback_left_aux(const trajectory_msgs::JointTrajectory& msg)
 
 void ArmsManager::callback_right_aux(const trajectory_msgs::JointTrajectory& msg)
 {
-    if(!force_flag_right.load())
+    if(!right_arm_stopped.load())
     {
       traj_right_mutex.lock();
       traj_right = msg;
@@ -264,6 +277,27 @@ void ArmsManager::state_callback_right(const sensor_msgs::JointState& msg)
     active_right=true;
 }
 
+void ArmsManager::callback_command_force_left_aux(const shared_msgs::CommandTrajectory& msg)
+{
+  sensitivity_axis_left[0].store(msg.fx_neg);
+  sensitivity_axis_left[1].store(msg.fx_pos);
+  sensitivity_axis_left[2].store(msg.fy_neg);
+  sensitivity_axis_left[3].store(msg.fy_pos);
+  sensitivity_axis_left[4].store(msg.fz_neg);
+  sensitivity_axis_left[5].store(msg.fz_pos);
+}
+
+void ArmsManager::callback_command_force_right_aux(const shared_msgs::CommandTrajectory& msg)
+{
+  sensitivity_axis_right[0].store(msg.fx_neg);
+  sensitivity_axis_right[1].store(msg.fx_pos);
+  sensitivity_axis_right[2].store(msg.fy_neg);
+  sensitivity_axis_right[3].store(msg.fy_pos);
+  sensitivity_axis_right[4].store(msg.fz_neg);
+  sensitivity_axis_right[5].store(msg.fz_pos);
+}
+
+
 bool ArmsManager::gravityCompensation(float mass, geometry_msgs::WrenchStamped msg, tf::Vector3& f)
 {
 	tf::Vector3 weight_force_world_frame(0.0,0.0,-9.81*mass);
@@ -272,13 +306,13 @@ bool ArmsManager::gravityCompensation(float mass, geometry_msgs::WrenchStamped m
 	tf::StampedTransform transform;
 	try
 	{
-		tf_listener_.waitForTransform(world_frame, msg.header.frame_id, msg.header.stamp, ros::Duration(0.1));
-		tf_listener_.lookupTransform(world_frame, msg.header.frame_id, msg.header.stamp, transform);
+	  tf_listener_.waitForTransform(world_frame, msg.header.frame_id, msg.header.stamp, ros::Duration(0.1));
+	  tf_listener_.lookupTransform(world_frame, msg.header.frame_id, msg.header.stamp, transform);
 	}
 	catch (const std::exception& e)
 	{
-		ROS_WARN_STREAM("error in arms manager " << e.what());
-		return false;
+	  ROS_WARN_STREAM("error in arms manager " << e.what());
+	  return false;
 	}
 
 	tf::Matrix3x3 R_world2sensor = transform.getBasis().transpose();
@@ -304,7 +338,7 @@ void ArmsManager::FTsensor_callback_left(const geometry_msgs::WrenchStamped::Con
 	if (!compensation_ok)
 		return;
 
-	ROS_DEBUG_STREAM("force compensed: ["<<meas[0]<<","<<meas[1]<<","<<meas[2]<<"]");
+	ROS_DEBUG_STREAM("force compensed: [" << meas[0] << "," << meas[1] << "," << meas[2] << "]");
 
 	if (calibration_counter_left_ <= calibration_number)
 	{
@@ -323,11 +357,62 @@ void ArmsManager::FTsensor_callback_left(const geometry_msgs::WrenchStamped::Con
 	else
 	{
 		meas = meas - bias_force_left_;
-		ROS_DEBUG_STREAM("force unbiased and compensed: [" << meas[0] << "," << meas[1] << "," << meas[2] <<"]");
-		if(abs(meas[0]) > force_ths[0].load())
-			force_flag_left.store(true);
-		else
-			force_flag_left.store(false);
+		ROS_DEBUG_STREAM("force unbiased and compensed: [" << meas[0] << "," << meas[1] << "," << meas[2] << "]");
+		
+		//FIXME To be optimized by using functions and standard maps. To be trusted!!
+		for (int i = 0; i < 2; ++i)
+		{
+		  //if the axis should not be sensed, continue
+		  if(sensitivity_axis_left[2*i].load() != shared_msgs::CommandTrajectory::NOT_SENSED)
+		  {
+		    //check negative axis
+		    if ( meas[i] < -force_ths[i].load() )
+		    {
+		      if (sensitivity_axis_left[2*i].load() == shared_msgs::CommandTrajectory::SENSED_TRANSITION)
+		      {
+			//detected a desired contact. State transition.
+			force_flag_left.store(shared_msgs::FeedbackTrajectory::SENSED_TRANSITION);
+			
+			//stop just the left arm
+			left_arm_stopped.store(true);
+		      }
+		      else
+		      {
+			//undesired contact
+			force_flag_left.store(shared_msgs::FeedbackTrajectory::SENSED_ERROR);
+			
+			//stop both the arm
+			left_arm_stopped.store(true);
+			right_arm_stopped.store(true);
+		      }
+		    }
+		  }
+		  
+		  if(sensitivity_axis_left[2*i+1].load() != shared_msgs::CommandTrajectory::NOT_SENSED)
+		  {
+		    //check positive axis
+		    if ( meas[i] > force_ths[i].load() )
+		    {
+		      if (sensitivity_axis_left[2*i+1].load() == shared_msgs::CommandTrajectory::SENSED_TRANSITION)
+		      {
+			//detected a desired contact. State transition.
+			force_flag_left.store(shared_msgs::FeedbackTrajectory::SENSED_TRANSITION);
+			
+			//stop just the left arm
+			left_arm_stopped.store(true);
+		      }
+		      else
+		      {
+			//undesired contact
+			force_flag_left.store(shared_msgs::FeedbackTrajectory::SENSED_ERROR);
+			
+			//stop both the arm
+			left_arm_stopped.store(true);
+			right_arm_stopped.store(true);
+		      }
+		    }
+		  }
+		}
 	}
 }
 
@@ -360,10 +445,12 @@ void ArmsManager::FTsensor_callback_right(const geometry_msgs::WrenchStamped::Co
 	{
 		meas = meas - bias_force_right_;
 		ROS_DEBUG_STREAM("force unbiased and compensed: ["<<meas[0]<<","<<meas[1]<<","<<meas[2]<<"]");
-		if(abs(meas[0]) > force_ths[0].load())
-			force_flag_right.store(true);
-		else
-			force_flag_right.store(false);
+		
+		//FIXME!! Add the new code!!
+// 		if(abs(meas[0]) > force_ths[0].load())
+// 			force_flag_right.store(true);
+// 		else
+// 			force_flag_right.store(false);
 	}
 }
 
@@ -378,10 +465,15 @@ void ArmsManager::store_reference(const geometry_msgs::Pose& in, trajectory_msgs
     out.points.at(0).positions.at(6) = in.orientation.w;
 }
 
-void ArmsManager::emergency_callback(const std_msgs::Bool& msg){
-  force_flag_right.store(msg.data);
-  force_flag_left.store(msg.data);
-  //FIXME communicate to matlab the event
+void ArmsManager::emergency_callback(const std_msgs::Bool& msg)
+{
+  //stop both the arms
+  left_arm_stopped.store(msg.data);
+  right_arm_stopped.store(msg.data);
+  
+  //FIXME communicate to matlab the event separately
+  force_flag_left.store(shared_msgs::FeedbackTrajectory::SENSED_ERROR);
+  force_flag_right.store(shared_msgs::FeedbackTrajectory::SENSED_ERROR);
 }
 
 void ArmsManager::run()
@@ -405,6 +497,8 @@ void ArmsManager::run()
 	std_msgs::Bool msg_right;
 	msg_right.data = force_flag_right.load();
 	pub_flag_force_right.publish(msg_right);
+	
+	//FIXME Add publisher for the flag to matlab
       }
 
       if (use_force_sensor_left_)
@@ -412,6 +506,8 @@ void ArmsManager::run()
 	std_msgs::Bool msg_left;
 	msg_left.data = force_flag_left.load();
 	pub_flag_force_left.publish(msg_left);
+	
+	//FIXME Add publisher for the flag to matlab
       }
 
       if (!use_force_sensor_right_ && !use_force_sensor_left_)

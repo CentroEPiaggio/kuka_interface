@@ -21,7 +21,10 @@ generate_dynamic_reconfigure_options(
     cfg/config_tool.cfg
 )
 
-catkin_package()
+catkin_package(
+ INCLUDE_DIRS include
+ CATKIN_DEPENDS shared_msgs
+)
 
 include_directories(
   include
@@ -29,7 +32,7 @@ include_directories(
 )
 
 add_executable(arms_manager_node src/arms_manager_node.cpp src/arms_manager.cpp)
-add_dependencies(arms_manager_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
+add_dependencies(arms_manager_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg shared_msgs_generate_messages_cpp)
 target_link_libraries(arms_manager_node ${catkin_LIBRARIES})
 
 add_executable(ee_manager_node src/ee_manager_node.cpp src/ee_manager.cpp src/qbmove_communications.cpp)
