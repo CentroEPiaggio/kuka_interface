@@ -66,7 +66,7 @@ private:
     std::mutex traj_left_mutex, traj_right_mutex;
     trajectory_msgs::JointTrajectory traj_left, traj_right;
     ros::Publisher pub_command_left, pub_command_right;
-    ros::Publisher pub_flag_force_right, pub_flag_force_left;
+    ros::Publisher pub_feedback_left, pub_feedback_right;
     ros::Subscriber sub_left, sub_right;
     ros::Subscriber sub_left_aux, sub_right_aux;
     ros::Subscriber sub_command_force_left_aux, sub_command_force_right_aux;
