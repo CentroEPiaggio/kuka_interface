@@ -1,6 +1,9 @@
 function [q_out_right] = traj_line_(t_prova, q_0_right_, wp2_pos, wp2_rot)
 %% clean workspace
-q_0_right = q_0_right_';
+q_0_right = zeros(1,7);
+for i = 1 : 7
+    q_0_right(i) = q_0_right_(i);
+end
 robot_ID = 'TWO_ARMS_r';
 
 %% q
