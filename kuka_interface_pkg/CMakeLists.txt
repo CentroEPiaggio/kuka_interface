@@ -31,6 +31,10 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
+add_executable(arms_manager_simple_node src/arms_manager_simple_node.cpp src/arms_manager_simple.cpp)
+add_dependencies(arms_manager_simple_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(arms_manager_simple_node ${catkin_LIBRARIES})
+
 add_executable(arms_manager_node src/arms_manager_node.cpp src/arms_manager.cpp)
 add_dependencies(arms_manager_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg shared_msgs_generate_messages_cpp)
 target_link_libraries(arms_manager_node ${catkin_LIBRARIES})
