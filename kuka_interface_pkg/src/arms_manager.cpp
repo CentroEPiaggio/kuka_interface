@@ -63,7 +63,7 @@ ArmsManager::ArmsManager(): private_nh_("~")
 
     if (use_force_sensor_right_)
     {
-      pub_flag_force_right = nh.advertise<std_msgs::Bool>("/arms_manager/force_flag_right", 10);
+      pub_feedback_right  = nh.advertise<shared_msgs::FeedbackTrajectory>("/arms_manager/feedback_force_right", 10);
 
       right_force_sub_ = new message_filters::Subscriber<geometry_msgs::WrenchStamped>(nh, "/my_sensor_right/ft_sensor_hw/my_sensor_right", 10);
       right_force_tf_filter_ = new tf::MessageFilter<geometry_msgs::WrenchStamped>(*right_force_sub_, tf_listener_, world_frame, 1);
@@ -72,7 +72,7 @@ ArmsManager::ArmsManager(): private_nh_("~")
 
     if (use_force_sensor_left_)
     {
-      pub_flag_force_left = nh.advertise<std_msgs::Bool>("/arms_manager/force_flag_left", 10);
+      pub_feedback_left  = nh.advertise<shared_msgs::FeedbackTrajectory>("/arms_manager/feedback_force_left", 10);
 
       left_force_sub_ = new message_filters::Subscriber<geometry_msgs::WrenchStamped>(nh, "/my_sensor_left/ft_sensor_hw/my_sensor_left", 10);
       left_force_tf_filter_ = new tf::MessageFilter<geometry_msgs::WrenchStamped>(*left_force_sub_, tf_listener_, world_frame, 1);
@@ -446,11 +446,59 @@ void ArmsManager::FTsensor_callback_right(const geometry_msgs::WrenchStamped::Co
 		meas = meas - bias_force_right_;
 		ROS_DEBUG_STREAM("force unbiased and compensed: ["<<meas[0]<<","<<meas[1]<<","<<meas[2]<<"]");
 		
-		//FIXME!! Add the new code!!
-// 		if(abs(meas[0]) > force_ths[0].load())
-// 			force_flag_right.store(true);
-// 		else
-// 			force_flag_right.store(false);
+		for (int i = 0; i < 2; ++i)
+		{
+		  //if the axis should not be sensed, continue
+		  if(sensitivity_axis_right[2*i].load() != shared_msgs::CommandTrajectory::NOT_SENSED)
+		  {
+		    //check negative axis
+		    if ( meas[i] < -force_ths[i].load() )
+		    {
+		      if (sensitivity_axis_right[2*i].load() == shared_msgs::CommandTrajectory::SENSED_TRANSITION)
+		      {
+			//detected a desired contact. State transition.
+			force_flag_right.store(shared_msgs::FeedbackTrajectory::SENSED_TRANSITION);
+			
+			//stop just the left arm
+			left_arm_stopped.store(true);
+		      }
+		      else
+		      {
+			//undesired contact
+			force_flag_right.store(shared_msgs::FeedbackTrajectory::SENSED_ERROR);
+			
+			//stop both the arm
+			left_arm_stopped.store(true);
+			right_arm_stopped.store(true);
+		      }
+		    }
+		  }
+		  
+		  if(sensitivity_axis_right[2*i+1].load() != shared_msgs::CommandTrajectory::NOT_SENSED)
+		  {
+		    //check positive axis
+		    if ( meas[i] > force_ths[i].load() )
+		    {
+		      if (sensitivity_axis_right[2*i+1].load() == shared_msgs::CommandTrajectory::SENSED_TRANSITION)
+		      {
+			//detected a desired contact. State transition.
+			force_flag_right.store(shared_msgs::FeedbackTrajectory::SENSED_TRANSITION);
+			
+			//stop just the left arm
+			right_arm_stopped.store(true);
+		      }
+		      else
+		      {
+			//undesired contact
+			force_flag_left.store(shared_msgs::FeedbackTrajectory::SENSED_ERROR);
+			
+			//stop both the arm
+			left_arm_stopped.store(true);
+			right_arm_stopped.store(true);
+		      }
+		    }
+		  }
+		}
 	}
 }
 
@@ -494,20 +542,18 @@ void ArmsManager::run()
       //publish force flags
       if (use_force_sensor_right_)
       {
-	std_msgs::Bool msg_right;
-	msg_right.data = force_flag_right.load();
-	pub_flag_force_right.publish(msg_right);
-	
-	//FIXME Add publisher for the flag to matlab
+	shared_msgs::FeedbackTrajectory msg_right;
+	msg_right.time = ros::Time::now();
+	msg_right.value = force_flag_right.load();
+	pub_feedback_right.publish(msg_right);
       }
 
       if (use_force_sensor_left_)
       {
-	std_msgs::Bool msg_left;
-	msg_left.data = force_flag_left.load();
-	pub_flag_force_left.publish(msg_left);
-	
-	//FIXME Add publisher for the flag to matlab
+	shared_msgs::FeedbackTrajectory msg_left;
+	msg_left.time = ros::Time::now();
+	msg_left.value = force_flag_left.load();
+	pub_feedback_left.publish(msg_left);
       }
 
       if (!use_force_sensor_right_ && !use_force_sensor_left_)
