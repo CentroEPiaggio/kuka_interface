@@ -360,6 +360,10 @@ void ArmsManager::FTsensor_callback_left(const geometry_msgs::WrenchStamped::Con
 		ROS_DEBUG_STREAM("force unbiased and compensed: [" << meas[0] << "," << meas[1] << "," << meas[2] << "]");
 		
 		//FIXME To be optimized by using functions and standard maps. To be trusted!!
+		bool stop_left = false;
+		bool stop_right = false;
+		int force_flag = shared_msgs::CommandTrajectory::NOT_SENSED;
+		
 		for (int i = 0; i < 2; ++i)
 		{
 		  //if the axis should not be sensed, continue
@@ -371,19 +375,21 @@ void ArmsManager::FTsensor_callback_left(const geometry_msgs::WrenchStamped::Con
 		      if (sensitivity_axis_left[2*i].load() == shared_msgs::CommandTrajectory::SENSED_TRANSITION)
 		      {
 			//detected a desired contact. State transition.
-			force_flag_left.store(shared_msgs::FeedbackTrajectory::SENSED_TRANSITION);
+			force_flag = (force_flag ==  shared_msgs::FeedbackTrajectory::SENSED_ERROR) ? force_flag : shared_msgs::FeedbackTrajectory::SENSED_TRANSITION;
 			
 			//stop just the left arm
-			left_arm_stopped.store(true);
+			stop_left = true;
 		      }
 		      else
 		      {
 			//undesired contact
-			force_flag_left.store(shared_msgs::FeedbackTrajectory::SENSED_ERROR);
+			force_flag = shared_msgs::FeedbackTrajectory::SENSED_ERROR;
 			
 			//stop both the arm
-			left_arm_stopped.store(true);
-			right_arm_stopped.store(true);
+			stop_left = true;
+			stop_right = true;
+			
+			break;
 		      }
 		    }
 		  }
@@ -396,23 +402,31 @@ void ArmsManager::FTsensor_callback_left(const geometry_msgs::WrenchStamped::Con
 		      if (sensitivity_axis_left[2*i+1].load() == shared_msgs::CommandTrajectory::SENSED_TRANSITION)
 		      {
 			//detected a desired contact. State transition.
-			force_flag_left.store(shared_msgs::FeedbackTrajectory::SENSED_TRANSITION);
+			force_flag = (force_flag ==  shared_msgs::FeedbackTrajectory::SENSED_ERROR) ? force_flag : shared_msgs::FeedbackTrajectory::SENSED_TRANSITION;
 			
 			//stop just the left arm
-			left_arm_stopped.store(true);
+			stop_left = true;
 		      }
 		      else
 		      {
 			//undesired contact
-			force_flag_left.store(shared_msgs::FeedbackTrajectory::SENSED_ERROR);
+			force_flag = shared_msgs::FeedbackTrajectory::SENSED_ERROR;
 			
 			//stop both the arm
-			left_arm_stopped.store(true);
-			right_arm_stopped.store(true);
+			stop_left = true;
+			stop_right = true;
+			
+			break;
 		      }
 		    }
 		  }
 		}
+		
+		//Update the flags and stop the arms eventually
+		force_flag_left.store(force_flag);
+		left_arm_stopped.store(stop_left);
+		if (force_flag == shared_msgs::FeedbackTrajectory::SENSED_ERROR)
+		  right_arm_stopped.store(stop_right); //if stopped due to an error 
 	}
 }
 
@@ -446,6 +460,10 @@ void ArmsManager::FTsensor_callback_right(const geometry_msgs::WrenchStamped::Co
 		meas = meas - bias_force_right_;
 		ROS_DEBUG_STREAM("force unbiased and compensed: ["<<meas[0]<<","<<meas[1]<<","<<meas[2]<<"]");
 		
+		bool stop_left = false;
+		bool stop_right = false;
+		int force_flag = shared_msgs::CommandTrajectory::NOT_SENSED;
+		
 		for (int i = 0; i < 2; ++i)
 		{
 		  //if the axis should not be sensed, continue
@@ -457,19 +475,21 @@ void ArmsManager::FTsensor_callback_right(const geometry_msgs::WrenchStamped::Co
 		      if (sensitivity_axis_right[2*i].load() == shared_msgs::CommandTrajectory::SENSED_TRANSITION)
 		      {
 			//detected a desired contact. State transition.
-			force_flag_right.store(shared_msgs::FeedbackTrajectory::SENSED_TRANSITION);
+			force_flag = (force_flag ==  shared_msgs::FeedbackTrajectory::SENSED_ERROR) ? force_flag : shared_msgs::FeedbackTrajectory::SENSED_TRANSITION;
 			
-			//stop just the left arm
-			left_arm_stopped.store(true);
+			//stop just the right arm
+			stop_right = true;
 		      }
 		      else
 		      {
 			//undesired contact
-			force_flag_right.store(shared_msgs::FeedbackTrajectory::SENSED_ERROR);
+			force_flag = shared_msgs::FeedbackTrajectory::SENSED_ERROR;
 			
 			//stop both the arm
-			left_arm_stopped.store(true);
-			right_arm_stopped.store(true);
+			stop_left = true;
+			stop_right = true;
+			
+			break;
 		      }
 		    }
 		  }
@@ -482,23 +502,31 @@ void ArmsManager::FTsensor_callback_right(const geometry_msgs::WrenchStamped::Co
 		      if (sensitivity_axis_right[2*i+1].load() == shared_msgs::CommandTrajectory::SENSED_TRANSITION)
 		      {
 			//detected a desired contact. State transition.
-			force_flag_right.store(shared_msgs::FeedbackTrajectory::SENSED_TRANSITION);
+			force_flag = (force_flag ==  shared_msgs::FeedbackTrajectory::SENSED_ERROR) ? force_flag : shared_msgs::FeedbackTrajectory::SENSED_TRANSITION;
 			
 			//stop just the left arm
-			right_arm_stopped.store(true);
+			stop_right = true;
 		      }
 		      else
 		      {
 			//undesired contact
-			force_flag_left.store(shared_msgs::FeedbackTrajectory::SENSED_ERROR);
+			force_flag = shared_msgs::FeedbackTrajectory::SENSED_ERROR;
 			
 			//stop both the arm
-			left_arm_stopped.store(true);
-			right_arm_stopped.store(true);
+			stop_left = true;
+			stop_right = true;
+			
+			break;
 		      }
 		    }
 		  }
 		}
+		
+		//Update the flags and stop the arms eventually
+		force_flag_right.store(force_flag);
+		right_arm_stopped.store(stop_left);
+		if (force_flag == shared_msgs::FeedbackTrajectory::SENSED_ERROR)
+		  left_arm_stopped.store(stop_left); //if stopped due to an error 
 	}
 }
 
