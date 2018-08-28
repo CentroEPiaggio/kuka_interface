@@ -126,7 +126,7 @@ R1 = eul2rotm([0, 0, pi/6], 'ZYX');
 
 ZYX_0 = rotm2eul(R_home);
 ZYX_1 = wp2_rot(end-2:end);
-R_1 = R_pre*eul2rotm(ZYX_1)*R1*R2;
+R_1 = R_pre*eul2rotm(ZYX_1')*R1*R2;
 ZYX_1 = eul2rotm(R_1);
 theta_traj = generate_line_points(ZYX_0, ZYX_1, t_prova);
 x_home_row = Tee_home(1:3,4)';
