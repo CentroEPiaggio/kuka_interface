@@ -123,12 +123,14 @@ R_off = eul2rotm([0, 0, 0], 'ZYX'); % offset attorno z
 R_pre = eul2rotm([-pi/2, 0, -pi/2], 'ZYX');
 R2 = eul2rotm([pi, 0, 0], 'ZYX');
 R1 = eul2rotm([0, 0, pi/6], 'ZYX');
-
+num_wp_rot = length(wp2_rot)/3;
 ZYX_0 = rotm2eul(R_home);
 %%
 ZYX = ZYX_0;
-for j = 1:2:length(wp2_rot)-2
-    ZYX = [ZYX; wp2_rot(j:j+2)'];
+i = 1;
+for j = 1:num_wp_rot   
+    ZYX = [ZYX; wp2_rot(i:i+2)'];
+    i = i+3
 end
 
 R_1 = R_pre*eul2rotm(ZYX(2,:))*R1*R2;
@@ -136,7 +138,6 @@ ZYX_1 = rotm2eul(R_1);
 theta_traj = [generate_line_points(ZYX_0, ZYX_1, t_rot(1))];
 i = 1;
 k = 3;
-num_wp_rot = length(wp2_rot)/3;
 for j = 1:num_wp_rot-1
     R_1 = R_pre*eul2rotm(ZYX(k,:))*R1*R2;
     ZYX_1 = [ZYX_1; rotm2eul(R_1)];

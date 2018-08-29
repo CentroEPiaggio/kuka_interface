@@ -119,12 +119,15 @@ Tee_home = T_b_DH0 * Tee_home * T_DH7_ee;
 R_home = Tee_home(1:3,1:3);
 
 %% transformations
+num_wp_rot = length(wp2_rot)/3;
 R2 = eul2rotm([pi, 0, 0], 'ZYX');
 R_pre = eul2rotm([pi, -pi/2, 0], 'ZYX'); 
 ZYX_0 = rotm2eul(R_home);
 ZYX = ZYX_0;
-for j = 1:2:length(wp2_rot)-2
-    ZYX = [ZYX; wp2_rot(j:j+2)'];
+i = 1;
+for j = 1:num_wp_rot   
+    ZYX = [ZYX; wp2_rot(i:i+2)'];
+    i = i+3
 end
 
 R_1 = R_pre*eul2rotm(ZYX(2,:))*R2;
@@ -132,7 +135,6 @@ ZYX_1 = rotm2eul(R_1);
 theta_traj = [generate_line_points(ZYX_0, ZYX_1, t_rot(1))];
 i = 1;
 k = 3;
-num_wp_rot = length(wp2_rot)/3;
 for j = 1:num_wp_rot-1
     R_1 = R_pre*eul2rotm(ZYX(k,:))*R2;
     ZYX_1 = [ZYX_1; rotm2eul(R_1)];
