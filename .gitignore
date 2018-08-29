@@ -34,5 +34,5 @@
 *kdev*
 
 #Matlab and Simulink compilation files
-**/srtl/*
+**/slprj/*
 **/matlab_gen/*
