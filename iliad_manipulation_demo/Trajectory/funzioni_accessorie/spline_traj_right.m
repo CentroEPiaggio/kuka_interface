@@ -133,15 +133,16 @@ end
 R_1 = R_pre*eul2rotm(ZYX(2,:))*R2;
 ZYX_1 = rotm2eul(R_1);
 theta_traj = [generate_line_points(ZYX_0, ZYX_1, t_rot(1))];
-i = 1;
+
 k = 3;
+
 for j = 1:num_wp_rot-1
     R_1 = R_pre*eul2rotm(ZYX(k,:))*R2;
     ZYX_1 = [ZYX_1; rotm2eul(R_1)];
-    X = generate_line_points(ZYX_1(i,:), ZYX_1(i+1,:), t_rot(i+1));
+    X = generate_line_points(ZYX_1(j,:), ZYX_1(j+1,:), t_rot(j+1));
     theta_traj = [theta_traj, X];
-    i = i+2;
     k = k+1;
+    
 end
 x_home_row = Tee_home(1:3,4)';
 
@@ -191,5 +192,4 @@ J_and_T_hand = def_JT_handle(robot_ID);
                                                         J_and_T_hand, ...
                                                         q_0_right, qd_0, x_des, ...
                                                         unil_constr, ...
-                                                        x_cons, param_vect);
-                                               
+x_cons, param_vect);
