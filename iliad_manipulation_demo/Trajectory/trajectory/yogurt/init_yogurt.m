@@ -33,6 +33,7 @@ load('q_0_left')
 
 %matrix of numbers of steps for each state's trajectory. Column 1 : right
 %arm, Column 2: left arm, rows are the states.
-t_prova = [800,800;800,800];
+t_prova = [2600,2600;1000,1000];
 %to detect when the robot has reached last point of its trajectory
 pos_threshold = 0.1;
+max_output_len = 4000;
