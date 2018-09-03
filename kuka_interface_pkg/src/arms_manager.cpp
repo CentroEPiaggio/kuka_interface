@@ -65,8 +65,8 @@ ArmsManager::ArmsManager(): private_nh_("~")
     {
       pub_feedback_right  = nh.advertise<shared_msgs::FeedbackTrajectory>("/arms_manager/feedback_force_right", 10);
 
-      right_force_sub_ = new message_filters::Subscriber<geometry_msgs::WrenchStamped>(nh, "/my_sensor_right/ft_sensor_hw/my_sensor_right", 10);
-      right_force_tf_filter_ = new tf::MessageFilter<geometry_msgs::WrenchStamped>(*right_force_sub_, tf_listener_, world_frame, 1);
+      right_force_sub_ = new message_filters::Subscriber<geometry_msgs::WrenchStamped>(nh, "/my_sensor_right/ft_sensor_hw/my_sensor_right", 20);
+      right_force_tf_filter_ = new tf::MessageFilter<geometry_msgs::WrenchStamped>(*right_force_sub_, tf_listener_, world_frame, 20);
       right_force_tf_filter_->registerCallback(boost::bind(&ArmsManager::FTsensor_callback_right, this, _1));
     }
 
@@ -74,8 +74,8 @@ ArmsManager::ArmsManager(): private_nh_("~")
     {
       pub_feedback_left  = nh.advertise<shared_msgs::FeedbackTrajectory>("/arms_manager/feedback_force_left", 10);
 
-      left_force_sub_ = new message_filters::Subscriber<geometry_msgs::WrenchStamped>(nh, "/my_sensor_left/ft_sensor_hw/my_sensor_left", 10);
-      left_force_tf_filter_ = new tf::MessageFilter<geometry_msgs::WrenchStamped>(*left_force_sub_, tf_listener_, world_frame, 1);
+      left_force_sub_ = new message_filters::Subscriber<geometry_msgs::WrenchStamped>(nh, "/my_sensor_left/ft_sensor_hw/my_sensor_left", 20);
+      left_force_tf_filter_ = new tf::MessageFilter<geometry_msgs::WrenchStamped>(*left_force_sub_, tf_listener_, world_frame, 20);
       left_force_tf_filter_->registerCallback(boost::bind(&ArmsManager::FTsensor_callback_left, this, _1));
     }
 
