@@ -1,5 +1,5 @@
 rosshutdown
-rosinit('http://192.168.0.150:11311')
+rosinit%('http://192.168.0.150:11311')
 
 %% definition of pub sub and msgs
 % pub_trajectory_right = rospublisher('/right_arm/joint_trajectory_controller/command_aux', 'trajectory_msgs/JointTrajectory');
@@ -33,6 +33,17 @@ load('q_0_left')
 
 %matrix of numbers of steps for each state's trajectory. Column 1 : right
 %arm, Column 2: left arm, rows are the states.
-t_prova = [800,800;800,800];
+t_prova = [600,600;600,600;600,600];
 %to detect when the robot has reached last point of its trajectory
 pos_threshold = 0.1;
+%table dimesions
+L = 0.725; 
+W = 1.05;
+H = 0.960;
+%left angle close to vito_anchor
+origin = [1.35, 1.201,0.7];
+box_dimensions = [0.3, 0.1, 0.1];%random
+%x_home_right = [1.6033; 0.8010; 0.7737];
+%rot_home_right = [3.1416    1.5371   -3.1416]';
+%x_home_left = [1.3740    0.8009    1.0516]';
+%rot_home_left = [-1.5703    0.0009    2.3554]';
