@@ -21,7 +21,7 @@ q_0_right = zeros(1,7);
 for i = 1 : 7
     q_0_right(i) = q_0_right_(i);
 end
-robot_ID = 'TWO_ARMS_r';
+robot_ID = 'TWO_ARMS_l';
 
 %% q
 qd_0 = zeros(7, 1);
@@ -80,8 +80,8 @@ lambda = 0.9;
 kp = 0.8;
 ko = 0.5;                   % orientation error gain
 K = [ones(1,14), kp, ko];  	% error gain vector
-T_b_DH0 = T_b_DH0r;
-T_DH7_ee = T_DH7r_eer;
+T_b_DH0 = T_b_DH0l;
+T_DH7_ee = T_DH7l_eel;
 
 %% whole parameters vector
 param_vect = [DPI_lambda_max, DPI_epsilon, beta_pos, beta_vel, lambda, K];
@@ -151,8 +151,10 @@ end
 x_home_row = Tee_home(1:3,4)';
 
 x_data = x_home_row;
-for j = 1:2:wp_num*3-2
-    x_data = [x_data;wp2_pos(j:j+2)'];
+i =1;
+for j = 1:wp_num
+    x_data = [x_data;wp2_pos(i:i+2)'];
+    i = i+3;
 end
 
 ppx = spline(t_samples, x_data(:,1), t);

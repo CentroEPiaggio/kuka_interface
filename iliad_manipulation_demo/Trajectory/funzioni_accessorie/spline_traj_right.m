@@ -147,8 +147,10 @@ end
 x_home_row = Tee_home(1:3,4)';
 
 x_data = x_home_row;
-for j = 1:2:wp_num*3-2
-    x_data = [x_data;wp2_pos(j:j+2)'];
+i=1;
+for j = 1:wp_num
+    x_data = [x_data;wp2_pos(i:i+2)'];
+    i = i+3;
 end
 
 ppx = spline(t_samples, x_data(:,1), t);
