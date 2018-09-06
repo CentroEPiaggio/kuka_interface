@@ -50,7 +50,8 @@ box_dimensions = [0.3, 0.1, 0.1];%random
 %x_home_left = [1.3740    0.8009    1.0516]';
 %rot_home_left = [-1.5703    0.0009    2.3554]';
 
-t_prova = [300,300;300,300;400,400;800,800];
+t_prova = [300,300;300,300;800,800;800,800;800,800];
 %to detect when the robot has reached last point of its trajectory
 pos_threshold = 0.1;
 max_output_len = 4000;
+box_number = 2;
