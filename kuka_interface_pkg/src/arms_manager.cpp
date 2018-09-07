@@ -225,20 +225,20 @@ void ArmsManager::callback_right(const geometry_msgs::Pose& msg)
 
 void ArmsManager::callback_left_aux(const trajectory_msgs::JointTrajectory& msg)
 {
-    if(!left_arm_stopped.load())
+    //if(!left_arm_stopped.load())
     {
       traj_left_mutex.lock();
-      traj_left = msg;
+      traj_left.points.at(0).positions = msg.points.at(0).positions;
       traj_left_mutex.unlock();
     }
 }
 
 void ArmsManager::callback_right_aux(const trajectory_msgs::JointTrajectory& msg)
 {
-    if(!right_arm_stopped.load())
+    //if(!right_arm_stopped.load())
     {
       traj_right_mutex.lock();
-      traj_right = msg;
+      traj_right.points.at(0).positions = msg.points.at(0).positions;
       traj_right_mutex.unlock();
     }
 }
@@ -364,7 +364,7 @@ void ArmsManager::FTsensor_callback_left(const geometry_msgs::WrenchStamped::Con
 		bool stop_right = false;
 		int force_flag = shared_msgs::CommandTrajectory::NOT_SENSED;
 		
-		for (int i = 0; i < 2; ++i)
+		for (int i = 0; i <= 2; ++i)
 		{
 		  //if the axis should not be sensed, continue
 		  if(sensitivity_axis_left[2*i].load() != shared_msgs::CommandTrajectory::NOT_SENSED)
@@ -464,7 +464,7 @@ void ArmsManager::FTsensor_callback_right(const geometry_msgs::WrenchStamped::Co
 		bool stop_right = false;
 		int force_flag = shared_msgs::CommandTrajectory::NOT_SENSED;
 		
-		for (int i = 0; i < 2; ++i)
+		for (int i = 0; i <= 2; ++i)
 		{
 		  //if the axis should not be sensed, continue
 		  if(sensitivity_axis_right[2*i].load() != shared_msgs::CommandTrajectory::NOT_SENSED)
@@ -560,10 +560,12 @@ void ArmsManager::run()
   {
       //publish commands to arms
       traj_left_mutex.lock();
+      traj_left.header.stamp = ros::Time(0);
       pub_command_left.publish(traj_left);
       traj_left_mutex.unlock();
 
       traj_right_mutex.lock();
+      traj_right.header.stamp = ros::Time(0);
       pub_command_right.publish(traj_right);
       traj_right_mutex.unlock();
 
