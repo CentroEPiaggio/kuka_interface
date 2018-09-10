@@ -120,27 +120,37 @@ R_home = Tee_home(1:3,1:3);
 
 %% transformations
 num_wp_rot = length(wp2_rot)/3;
-R2 = eul2rotm([pi, 0, 0], 'ZYX');
-R_pre = eul2rotm([pi, -pi/2, 0], 'ZYX'); 
-ZYX_0 = rotm2eul(R_home);
-ZYX = ZYX_0;
+%R2 = eul2rotm([pi, 0, 0], 'ZYX');
+R2 = [-1 0 0;0 -1 0;0 0 1];
+q_2 = rotm2quat(R2);
+%R_pre = eul2rotm([pi, -pi/2, 0], 'ZYX'); 
+R_pre = [0 0 1; 0 -1 0; 1 0 0];
+q_pre = rotm2quat(R_pre);
+
+q=[];
+q0 = rotm2quat(R_home);
 i = 1;
+ZYX = [];
 for j = 1:num_wp_rot   
+    q = [q; wp2_rot(i:i+2)'];
     ZYX = [ZYX; wp2_rot(i:i+2)'];
+    
     i = i+3
 end
 
-R_1 = R_pre*eul2rotm(ZYX(2,:))*R2;
-ZYX_1 = rotm2eul(R_1);
-theta_traj = [generate_line_points(ZYX_0, ZYX_1, t_rot(1))];
+R_1 = R_pre*eul2rotm(ZYX(1,:))*R2;
+q1 = rotm2quat((R_1));
+theta_traj = [generate_slerp(q0, q1, t_rot(1))];
 
-k = 3;
+k = 2;
+disp('Right');
 
 for j = 1:num_wp_rot-1
     R_1 = R_pre*eul2rotm(ZYX(k,:))*R2;
-    ZYX_1 = [ZYX_1; rotm2eul(R_1)];
-    X = generate_line_points(ZYX_1(j,:), ZYX_1(j+1,:), t_rot(j+1));
-    theta_traj = [theta_traj, X];
+    q1 = [q1; rotm2quat((R_1))];
+    X = generate_slerp(q1(j,:), q1(j+1,:), t_rot(1));
+    theta_traj = [theta_traj; X];
+
     k = k+1;
     
 end
@@ -160,7 +170,8 @@ ppz = spline(t_samples, x_data(:,3), t);
 for i = 1:t_prova
        
     traj(:,i) = [ppx(i);ppy(i);ppz(i)];
-    x_or_ee_des(:, :, i) = eul2rotm(theta_traj(:, i)', 'ZYX');
+    x_or_ee_des(:, :, i) = quat2rotm(theta_traj(i, :));
+
         
 end
 
@@ -183,7 +194,7 @@ end
     x_cons = [  xee_max, xee_min, xj7_max, xj7_min, xj6_max, xj6_min, ...
                 xj5_max, xj5_min, xj4_max, xj4_min, xj3_max, xj3_min, ...
                 xj2_max, xj2_min, NaN, NaN];
- 
+ disp('Here');
 %% algorithm
 
 % define function handles of J and T for the fast version

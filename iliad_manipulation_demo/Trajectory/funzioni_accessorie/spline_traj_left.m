@@ -60,10 +60,10 @@ qd_0 = zeros(7, 1);
 
     % from DH7 to ee_right --> Rz(pi)
         T_DH7r_eer = [[[-1 0 0; 0 -1 0; 0 0 1], zeros(3,1)]; [0 0 0 1]];
-        T_eer_DH7r = inv(T_DH7r_eer);
+        %T_eer_DH7r = inv(T_DH7r_eer);
 
         T_DH7l_eel = [[[-1 0 0; 0 -1 0; 0 0 1], zeros(3,1)]; [0 0 0 1]];
-        T_eel_DH7l = inv(T_DH7l_eel);
+        %T_eel_DH7l = inv(T_DH7l_eel);
         
 
 %% parameters for reverse priority algorithm
@@ -119,33 +119,40 @@ Tee_home = T_b_DH0 * Tee_home * T_DH7_ee;
 R_home = Tee_home(1:3,1:3);
 
 %% transformations
-R_off = eul2rotm([0, 0, 0], 'ZYX'); % offset attorno z
-R_pre = eul2rotm([-pi/2, 0, -pi/2], 'ZYX');
-R2 = eul2rotm([pi, 0, 0], 'ZYX');
+%R_off = eul2rotm([0, 0, 0], 'ZYX'); % offset attorno z
+%R_pre = eul2rotm([-pi/2, 0, -pi/2], 'ZYX');
+R_pre = [0 0 1; -1 0 0; 0 -1 0];
+R2 = [-1 0 0; 0 -1 0; 0 0 1];
+%R2 = eul2rotm([pi, 0, 0], 'ZYX');
 R1 = eul2rotm([0, 0, pi/6], 'ZYX');
 num_wp_rot = length(wp2_rot)/3;
-ZYX_0 = rotm2eul(R_home);
+%ZYX_0 = rotm2eul(R_home);
+q0 = rotm2quat(R_home);
 %%
-ZYX = ZYX_0;
+%ZYX = ZYX_0;
+ZYX = [];
 i = 1;
 for j = 1:num_wp_rot   
     ZYX = [ZYX; wp2_rot(i:i+2)'];
     i = i+3
 end
 
-R_1 = R_pre*eul2rotm(ZYX(2,:))*R1*R2;
-ZYX_1 = rotm2eul(R_1);
-theta_traj = [generate_line_points(ZYX_0, ZYX_1, t_rot(1))];
+R_1 = R_pre*eul2rotm(ZYX(1,:))*R1*R2;
+%ZYX_1 = rotm2eul(R_1);
+q1 = rotm2quat(R_1);
+theta_traj = [generate_slerp(q0, q1, t_rot(1))];
 
-k = 3;
+k = 2;
 for j = 1:num_wp_rot-1
     R_1 = R_pre*eul2rotm(ZYX(k,:))*R1*R2;
-    ZYX_1 = [ZYX_1; rotm2eul(R_1)];
-    X = generate_line_points(ZYX_1(j,:), ZYX_1(j+1,:), t_rot(j+1));
-    theta_traj = [theta_traj, X];
+    %ZYX_1 = [ZYX_1; rotm2eul(R_1)];
+    q1 = [q1;rotm2quat(R_1)];
+    X = generate_slerp(q1(j,:), q1(j+1,:), t_rot(j+1));
+    theta_traj = [theta_traj; X];
     
     k = k+1;
 end
+disp('Left');
 %%
 
 x_home_row = Tee_home(1:3,4)';
@@ -164,8 +171,8 @@ ppz = spline(t_samples, x_data(:,3), t);
 for i = 1:t_prova
        
     traj(:,i) = [ppx(i);ppy(i);ppz(i)];
-    x_or_ee_des(:, :, i) = eul2rotm(theta_traj(:, i)', 'ZYX');
-        
+    x_or_ee_des(:, :, i) = quat2rotm(theta_traj(i,:));
+    
 end
 
  iter_num_1 = t_prova;
@@ -194,7 +201,7 @@ end
 J_and_T_hand = def_JT_handle(robot_ID);
 
 % execute algorithm
-[q_out, qd_out_right_1, e_out_right_1] = reverse_priority_pos_or_7j( 	N, Ts, iter_num_1, ...
+[q_out, ~, ~] = reverse_priority_pos_or_7j( 	N, Ts, iter_num_1, ...
                                                         J_and_T_hand, ...
                                                         q_0_right, qd_0, x_des, ...
                                                         unil_constr, ...

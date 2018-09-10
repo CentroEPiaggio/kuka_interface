@@ -24,7 +24,6 @@ OUTPUT
 
     tA = 0;
     tB = N;
-    
     points = NaN(3,N);    % init for speed
     
     points(1,1) = A(1);
@@ -36,8 +35,16 @@ OUTPUT
         points(2,t) = A(2) + (t - tA) * (B(2) - A(2)) / (tB - tA);
         points(3,t) = A(3) + (t - tA) * (B(3) - A(3)) / (tB - tA);
     end
+    
+        t = 0:1/(N-1):1;
+
     points(1,N) = B(1);
     points(2,N) = B(2);
     points(3,N) = B(3);
     
+    for k=1:N
+        for j=1:3
+        points(j,k) = A(j)+t(k)*(B(j)-A(j));
+        end
+    end
 end

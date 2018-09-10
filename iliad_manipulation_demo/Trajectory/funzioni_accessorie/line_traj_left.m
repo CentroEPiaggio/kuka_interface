@@ -1,4 +1,4 @@
-function q_out = spline_traj_left(t_prova, q_0_right_, wp2_pos, wp2_rot,t_rot)
+function q_out = line_traj_left(t_prova, q_0_right_, wp2_pos, wp2_rot,t_rot)
 
 %t_prova = number of samples of the trajectory.
 %q_0_right= iniital position
@@ -117,32 +117,35 @@ DH_table_num = KUKA_LWR_DHtable(q_0_right);
 
 Tee_home = T_b_DH0 * Tee_home * T_DH7_ee;
 R_home = Tee_home(1:3,1:3);
+num_wp_rot = length(wp2_rot)/3;
+R_pre = [0 0 1; -1 0 0; 0 -1 0];
+R2 = [-1 0 0; 0 -1 0; 0 0 1];
+%R2 = eul2rotm([pi, 0, 0], 'ZYX');
+R1 = eul2rotm([0, 0, pi/6], 'ZYX');
+q0 = rotm2quat(R_home);
 
 %% transformations
-R_off = eul2rotm([0, 0, 0], 'ZYX'); % offset attorno z
-R_pre = eul2rotm([-pi/2, 0, -pi/2], 'ZYX');
-R2 = eul2rotm([pi, 0, 0], 'ZYX');
-R1 = eul2rotm([0, 0, pi/6], 'ZYX');
-num_wp_rot = length(wp2_rot)/3;
-ZYX_0 = rotm2eul(R_home);
 %%
-ZYX = ZYX_0;
+%ZYX = ZYX_0;
+ZYX = [];
 i = 1;
 for j = 1:num_wp_rot   
     ZYX = [ZYX; wp2_rot(i:i+2)'];
     i = i+3
 end
 
-R_1 = R_pre*eul2rotm(ZYX(2,:))*R1*R2;
+R_1 = R_pre*eul2rotm(ZYX(1,:))*R1*R2;
 ZYX_1 = rotm2eul(R_1);
-theta_traj = [generate_line_points(ZYX_0, ZYX_1, t_rot(1))];
+q1 = rotm2quat(R_1);
+theta_traj = [generate_slerp(q0, q1, t_rot(1))];
 
-k = 3;
+k = 2;
 for j = 1:num_wp_rot-1
     R_1 = R_pre*eul2rotm(ZYX(k,:))*R1*R2;
-    ZYX_1 = [ZYX_1; rotm2eul(R_1)];
-    X = generate_line_points(ZYX_1(j,:), ZYX_1(j+1,:), t_rot(j+1));
-    theta_traj = [theta_traj, X];
+    %ZYX_1 = [ZYX_1; rotm2eul(R_1)];
+    q1 = [q1;rotm2quat(R_1)];
+    X = generate_slerp(q1(j,:), q1(j+1,:), t_rot(j+1));
+    theta_traj = [theta_traj; X];
     
     k = k+1;
 end
@@ -156,7 +159,7 @@ traj = generate_line_points(x_home_row,wp2_pos',t_prova);
 
 for i = 1:t_prova
        
-    x_or_ee_des(:, :, i) = eul2rotm(theta_traj(:, i)', 'ZYX');
+    x_or_ee_des(:, :, i) = quat2rotm(theta_traj(i,:));
         
 end
 

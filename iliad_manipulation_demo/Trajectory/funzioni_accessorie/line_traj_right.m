@@ -1,4 +1,4 @@
-function q_out = spline_traj_right(t_prova, q_0_right_, wp2_pos, wp2_rot,t_rot)
+function q_out = line_traj_right(t_prova, q_0_right_, wp2_pos, wp2_rot,t_rot)
 
 %t_prova = number of samples of the trajectory.
 %q_0_right= iniital position
@@ -120,37 +120,49 @@ R_home = Tee_home(1:3,1:3);
 
 %% transformations
 num_wp_rot = length(wp2_rot)/3;
-R2 = eul2rotm([pi, 0, 0], 'ZYX');
-R_pre = eul2rotm([pi, -pi/2, 0], 'ZYX'); 
-ZYX_0 = rotm2eul(R_home);
-ZYX = ZYX_0;
+%R2 = eul2rotm([pi, 0, 0], 'ZYX');
+R2 = [-1 0 0;0 -1 0;0 0 1];
+q_2 = rotm2quat(R2);
+%R_pre = eul2rotm([pi, -pi/2, 0], 'ZYX'); 
+R_pre = [0 0 1; 0 -1 0; 1 0 0];
+q_pre = rotm2quat(R_pre);
+q0 = rotm2quat(R_home);
+
+%ZYX_0 = rotm2eul(R_home);
+%q = ZYX_0;
+q = []
+ZYX = [];
+q0 = rotm2quat(R_home);
 i = 1;
 for j = 1:num_wp_rot   
+    q = [q; wp2_rot(i:i+2)'];
     ZYX = [ZYX; wp2_rot(i:i+2)'];
     i = i+3
 end
 
-R_1 = R_pre*eul2rotm(ZYX(2,:))*R2;
-ZYX_1 = rotm2eul(R_1);
-theta_traj = [generate_line_points(ZYX_0, ZYX_1, t_rot(1))];
+R_1 = R_pre*eul2rotm(ZYX(1,:))*R2;
+q1 = rotm2quat((R_1));
+theta_traj = [generate_slerp(q0, q1, t_rot(1))];
 
-k = 3;
+k = 2;
 
 for j = 1:num_wp_rot-1
     R_1 = R_pre*eul2rotm(ZYX(k,:))*R2;
-    ZYX_1 = [ZYX_1; rotm2eul(R_1)];
-    X = generate_line_points(ZYX_1(j,:), ZYX_1(j+1,:), t_rot(j+1));
-    theta_traj = [theta_traj, X];
+    q1 = [q1; rotm2quat((R_1))];
+    X = generate_slerp(q1(j,:), q1(j+1,:), t_rot(1));
+    theta_traj = [theta_traj; X];
+
     k = k+1;
     
 end
+%%
 x_home_row = Tee_home(1:3,4)';
 
 traj = generate_line_points([x_home_row],wp2_pos',t_prova);
 
 for i = 1:t_prova
        
-    x_or_ee_des(:, :, i) = eul2rotm(theta_traj(:, i)', 'ZYX');
+    x_or_ee_des(:, :, i) = quat2rotm(theta_traj(i,:));
         
 end
 
